@@ -24,7 +24,7 @@
  * <pre>
  *  var log = new log4js.getLogger("some-category-name"); //create logger instance
  *  log.setLevel(log4js.Level.TRACE); //set the Level
- *  log.addAppender(new ConsoleAppender(log, false)); // logs to the js console
+ *  log.addAppender(new JSConsoleAppender(log, false)); // logs to the js console
 
  *  // if multiple appenders are set all will log
  *  log.addAppender(new ConsoleAppender(log, true)); // console that is in-line in the page
@@ -252,6 +252,11 @@ log4js.LoggingEvent = function(categoryName, level, message, exception, logger) 
 	this.exception = exception;
 	this.level = level;
 	this.logger = logger;
+
+    // Additional optional fields to be handled by formatter as seen fit
+    // Some of these fields may be intended for use by a particular appender only
+    // Typically these fields are set dynamically by a Logger.onlog handler
+    this.extra = {};
 };
 
 log4js.LoggingEvent.prototype = {
