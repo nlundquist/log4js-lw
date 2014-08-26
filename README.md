@@ -8,7 +8,7 @@ the [active Log4J browser project](https://github.com/stritti/log4js) created an
 
 To initialize loggers:
 
-'''
+```
 # init loggers
 error_logger = log4js.getLogger('browser-error');
 tracking_logger = log4js.getLogger('browser-tracking');
@@ -28,15 +28,15 @@ tracking_logger.onlog.addListener(addUserAndClient);
 # add appender defining destination for logs
 error_logger.addAppender(new log4js.GELFAppender('http://log.myhost.com/gelf'))
 tracking_logger.addAppender(new log4js.GELFAppender('http://log.myhost.com/gelf'))
-'''
+```
 
 To later log via one of the loggers:
 
-'''
+```
 log4js.getLogger('browser-error').error(
     'Initial site loading has caused an error.'
 )
-'''
+```
 
 ## Included Appenders
 
