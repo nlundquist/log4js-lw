@@ -2,7 +2,7 @@
 
 This derivation of the Log4JS library provides a simple Log4j like interface for logging in the browser.
 This project was started to reduce the complexity, remove the burdensome legacy support and add modularity to 
-the [active Log4J browser project](https://github.com/stritti/log4js) created and maintained by stritti.
+the [original Log4J browser project](https://github.com/stritti/log4js) created and maintained by stritti.
 
 ## Usage
 
@@ -17,7 +17,7 @@ tracking_logger = log4js.getLogger('browser-tracking');
 error_logger.setLevel(log4js.Level.ERROR);
 tracking_logger.setLevel(log4js.Level.INFO);
 
-# add additional fields via handler (optional, used by GELFAppender)
+# add additional fields to log via handler (optional, used by GELFAppender)
 addUserAndClient = function(log) {
   log.extra.user = app.user.full_name;
   log.extra.client = window.location.host.split('.')[0];
@@ -48,3 +48,6 @@ and easy to extend interface to suit the needs of the average browser logging ca
 
 Compatible appenders include those in the original Log4JS distribution and the following projects:
 [Log4JS-LW GELF Log Appender](https://github.com/nlundquist/log4js-gelf-appender)
+
+## Support
+IE8+, Chrome, Firefox, Safari, Opera, iOS, Android
