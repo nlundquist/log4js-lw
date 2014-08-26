@@ -50,5 +50,11 @@ Compatible appenders include those in the original Log4JS distribution and the f
 [Log4JS-LW GELF Log Appender](https://github.com/nlundquist/log4js-gelf-appender)
 
 ## Support
-IE8+, Chrome, Firefox, Safari, Opera, iOS 6.1+, Android 4.0+
 Where no version is noted the two most recent versions are supported.
+* IE8+
+* Chrome
+* Firefox
+* Safari
+* Opera
+* iOS 6.1+
+* Android 4.0+
