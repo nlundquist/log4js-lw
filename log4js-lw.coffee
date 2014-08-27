@@ -156,6 +156,7 @@ log4js = (->
       return this.level;
   }
 
+
   # Static variables
   extend(Level, {
     OFF_INT: Number.MAX_VALUE,
@@ -177,22 +178,14 @@ log4js = (->
   })
 
 
-  return lib;
-)()
-
-
-
-
-/**
- * Models a logging event.
- * @constructor
- * @param {String} categoryName name of category
- * @param {log4js.Level} level level of message
- * @param {String} message message to log
- * @param {log4js.Logger} logger the associated logger
- * @author Seth Chisamore
- */
-log4js.LoggingEvent = function(categoryName, level, message, exception, logger) {
+  # Models a logging event.
+  # @constructor
+  # @param {String} categoryName name of category
+  # @param {log4js.Level} level level of message
+  # @param {String} message message to log
+  # @param {log4js.Logger} logger the associated logger
+  # @author Seth Chisamore
+  LoggingEvent = (categoryName, level, message, exception, logger) ->
     this.startTime = new Date();
     this.categoryName = categoryName;
     this.message = message;
@@ -200,516 +193,417 @@ log4js.LoggingEvent = function(categoryName, level, message, exception, logger) 
     this.level = level;
     this.logger = logger;
 
-    // Additional optional fields to be handled by formatter as seen fit
-    // Some of these fields may be intended for use by a particular appender only
-    // Typically these fields are set dynamically by a Logger.onlog handler
+    # Additional optional fields to be handled by formatter as seen fit
+    # Some of these fields may be intended for use by a particular appender only
+    # Typically these fields are set dynamically by a Logger.onlog handler
     this.extra = {};
-};
 
-log4js.LoggingEvent.prototype = {
-    /**
-     * get the timestamp formatted as String.
-     * @return {String} formatted timestamp
-     * @see log4js#setDateFormat()
-     */
-    getFormattedTimestamp: function() {
-        if(this.logger) {
-            return this.logger.getFormattedTimestamp(this.startTime);
-        } else {
-            return this.startTime.toString();
-        }
-    }
-};
+  LoggingEvent.prototype = {
+    # get the timestamp formatted as String.
+    # @return {String} formatted timestamp
+    # @see log4js#setDateFormat()
+    getFormattedTimestamp: ->
+      if (this.logger)
+        return this.logger.getFormattedTimestamp(this.startTime);
+      else
+        return this.startTime.toString();
+  };
 
+
+  return lib;
+)()
 
 
 
-/**
- * Logger to log messages to the defined appender.</p>
- * Default appender is Appender, which is ignoring all messages. Please
- * use setAppender() to set a specific appender (e.g. WindowAppender).
- * use {@see log4js#getLogger(String)} to get an instance.
- * @constructor
- * @param name name of category to log to
- * @author Stephan Strittmatter
- */
-log4js.Logger = function(name) {
-    this.loggingEvents = [];
-    this.appenders = [];
-    /** category of logger */
-    this.category = name || "";
-    /** level to be logged */
-    this.level = log4js.Level.FATAL;
 
-    this.onlog = new log4js.CustomEvent();
-    this.onclear = new log4js.CustomEvent();
 
-    /** appender to write in */
-    this.appenders.push(new log4js.Appender(this));
-};
+
+
+
+# Logger to log messages to the defined appender.</p>
+# Default appender is Appender, which is ignoring all messages. Please
+# use setAppender() to set a specific appender (e.g. WindowAppender).
+# use {@see log4js#getLogger(String)} to get an instance.
+# @constructor
+# @param name name of category to log to
+# @author Stephan Strittmatter
+log4js.Logger = (name) ->
+  this.loggingEvents = [];
+  this.appenders = [];
+  # category of logger
+  this.category = name || "";
+  # level to be logged
+  this.level = log4js.Level.FATAL;
+
+  this.onlog = new log4js.CustomEvent();
+  this.onclear = new log4js.CustomEvent();
+
+  # appender to write in
+  this.appenders.push(new log4js.Appender(this));
 
 log4js.Logger.prototype = {
+  # add additional appender. DefaultAppender always is there.
+  # @param appender additional wanted appender
+  addAppender: (appender) ->
+    if (appender instanceof log4js.Appender)
+      appender.setLogger(this);
+      this.appenders.push(appender);
+    else
+      throw "Not instance of an Appender: " + appender;
 
-    /**
-     * add additional appender. DefaultAppender always is there.
-     * @param appender additional wanted appender
-     */
-    addAppender: function(appender) {
-        if (appender instanceof log4js.Appender) {
-            appender.setLogger(this);
-            this.appenders.push(appender);
-        } else {
-            throw "Not instance of an Appender: " + appender;
-        }
-    },
+  # set Array of appenders. Previous Appenders are cleared and removed.
+  # @param {Array} appenders Array of Appenders
+  setAppenders: (appenders) ->
+    # clear first all existing appenders
+    for appender of this.appenders
+      appender.doClear()
 
-    /**
-     * set Array of appenders. Previous Appenders are cleared and removed.
-     * @param {Array} appenders Array of Appenders
-     */
-    setAppenders: function(appenders) {
-        //clear first all existing appenders
-        for(var i = 0; i < this.appenders.length; i++) {
-            this.appenders[i].doClear();
-        }
+    this.appenders = appenders;
 
-        this.appenders = appenders;
+    for appender of this.appenders
+      appender.setLoggers(this)
 
-        for(var j = 0; j < this.appenders.length; j++) {
-            this.appenders[j].setLogger(this);
-        }
-    },
+  # Set the Loglevel default is LogLEvel.TRACE
+  # @param level wanted logging level
+  setLevel: (level) ->
+    this.level = level;
 
-    /**
-     * Set the Loglevel default is LogLEvel.TRACE
-     * @param level wanted logging level
-     */
-    setLevel: function(level) {
-        this.level = level;
-    },
+  # main log method logging to all available appenders
+  # @private
+  log: (logLevel, message, exception) ->
+    loggingEvent = new log4js.LoggingEvent(this.category, logLevel, message,
+      exception, this);
+    this.loggingEvents.push(loggingEvent);
+    this.onlog.dispatch(loggingEvent);
 
-    /**
-     * main log method logging to all available appenders
-     * @private
-     */
-    log: function(logLevel, message, exception) {
-        var loggingEvent = new log4js.LoggingEvent(this.category, logLevel,
-            message, exception, this);
-        this.loggingEvents.push(loggingEvent);
-        this.onlog.dispatch(loggingEvent);
-    },
+  # clear logging
+  clear: () ->
+    try
+      this.loggingEvents = [];
+      this.onclear.dispatch();
+    catch e
+      return
 
-    /** clear logging */
-    clear : function () {
-        try{
-            this.loggingEvents = [];
-            this.onclear.dispatch();
-        } catch(e){}
-    },
-    /** checks if Level Trace is enabled */
-    isTraceEnabled: function() {
-        if (this.level.valueOf() <= log4js.Level.TRACE.valueOf()) {
-            return true;
-        }
-        return false;
-    },
-    /**
-     * Trace messages
-     * @param message {Object} message to be logged
-     */
-    trace: function(message) {
-        if (this.isTraceEnabled()) {
-            this.log(log4js.Level.TRACE, message, null);
-        }
-    },
-    /** checks if Level Debug is enabled */
-    isDebugEnabled: function() {
-        if (this.level.valueOf() <= log4js.Level.DEBUG.valueOf()) {
-            return true;
-        }
-        return false;
-    },
-    /**
-     * Debug messages
-     * @param message {Object} message to be logged
-     */
-    debug: function(message) {
-        if (this.isDebugEnabled()) {
-            this.log(log4js.Level.DEBUG, message, null);
-        }
-    },
-    /**
-     * Debug messages
-     * @param {Object} message  message to be logged
-     * @param {Throwable} throwable
-     */
-    debug: function(message, throwable) {
-        if (this.isDebugEnabled()) {
-            this.log(log4js.Level.DEBUG, message, throwable);
-        }
-    },
-    /** checks if Level Info is enabled */
-    isInfoEnabled: function() {
-        if (this.level.valueOf() <= log4js.Level.INFO.valueOf()) {
-            return true;
-        }
-        return false;
-    },
-    /**
-     * logging info messages
-     * @param {Object} message  message to be logged
-     */
-    info: function(message) {
-        if (this.isInfoEnabled()) {
-            this.log(log4js.Level.INFO, message, null);
-        }
-    },
-    /**
-     * logging info messages
-     * @param {Object} message  message to be logged
-     * @param {Throwable} throwable
-     */
-    info: function(message, throwable) {
-        if (this.isInfoEnabled()) {
-            this.log(log4js.Level.INFO, message, throwable);
-        }
-    },
-    /** checks if Level Warn is enabled */
-    isWarnEnabled: function() {
-        if (this.level.valueOf() <= log4js.Level.WARN.valueOf()) {
-            return true;
-        }
-        return false;
-    },
+  # checks if Level Trace is enabled
+  isTraceEnabled: () ->
+    if (this.level.valueOf() <= log4js.Level.TRACE.valueOf())
+      return true
+    return false
 
-    /** logging warn messages */
-    warn: function(message) {
-        if (this.isWarnEnabled()) {
-            this.log(log4js.Level.WARN, message, null);
-        }
-    },
-    /** logging warn messages */
-    warn: function(message, throwable) {
-        if (this.isWarnEnabled()) {
-            this.log(log4js.Level.WARN, message, throwable);
-        }
-    },
-    /** checks if Level Error is enabled */
-    isErrorEnabled: function() {
-        if (this.level.valueOf() <= log4js.Level.ERROR.valueOf()) {
-            return true;
-        }
-        return false;
-    },
-    /** logging error messages */
-    error: function(message) {
-        if (this.isErrorEnabled()) {
-            this.log(log4js.Level.ERROR, message, null);
-        }
-    },
-    /** logging error messages */
-    error: function(message, throwable) {
-        if (this.isErrorEnabled()) {
-            this.log(log4js.Level.ERROR, message, throwable);
-        }
-    },
-    /** checks if Level Fatal is enabled */
-    isFatalEnabled: function() {
-        if (this.level.valueOf() <= log4js.Level.FATAL.valueOf()) {
-            return true;
-        }
-        return false;
-    },
-    /** logging fatal messages */
-    fatal: function(message) {
-        if (this.isFatalEnabled()) {
-            this.log(log4js.Level.FATAL, message, null);
-        }
-    },
-    /** logging fatal messages */
-    fatal: function(message, throwable) {
-        if (this.isFatalEnabled()) {
-            this.log(log4js.Level.FATAL, message, throwable);
-        }
-    },
+  # Trace messages
+  # @param message {Object} message to be logged
+  trace: (message) ->
+    if (this.isTraceEnabled())
+      this.log(log4js.Level.TRACE, message, null)
 
-    setDateFormatter: function(formatFunction) {
-        this.dateformatter = formatFunction;
-    },
+  # checks if Level Debug is enabled
+  isDebugEnabled: () ->
+    if (this.level.valueOf() <= log4js.Level.DEBUG.valueOf())
+      return true
+    return false
 
-    getFormattedTimestamp: function(date) {
-      return this.dateformatter(date);
-    }
+  # Debug messages
+  # @param message {Object} message to be logged
+  debug: (message) ->
+    if (this.isDebugEnabled())
+      this.log(log4js.Level.DEBUG, message, null);
+
+  # Debug messages
+  # @param {Object} message  message to be logged
+  # @param {Throwable} throwable
+  debug: (message, throwable) ->
+    if (this.isDebugEnabled())
+      this.log(log4js.Level.DEBUG, message, throwable);
+
+  # checks if Level Info is enabled
+  isInfoEnabled: () ->
+    if (this.level.valueOf() <= log4js.Level.INFO.valueOf())
+      return true;
+    return false;
+
+  # logging info messages
+  # @param {Object} message  message to be logged
+  info: (message) ->
+    if (this.isInfoEnabled())
+      this.log(log4js.Level.INFO, message, null);
+
+  # logging info messages
+  # @param {Object} message  message to be logged
+  # @param {Throwable} throwable
+  info: (message, throwable) ->
+    if (this.isInfoEnabled())
+      this.log(log4js.Level.INFO, message, throwable);
+
+  # checks if Level Warn is enabled
+  isWarnEnabled: () ->
+    if (this.level.valueOf() <= log4js.Level.WARN.valueOf())
+      return true;
+    return false;
+
+  # logging warn messages
+  warn: (message) ->
+    if (this.isWarnEnabled())
+      this.log(log4js.Level.WARN, message, null);
+
+  # logging warn messages
+  warn: (message, throwable) ->
+    if (this.isWarnEnabled())
+      this.log(log4js.Level.WARN, message, throwable);
+
+  # checks if Level Error is enabled
+  isErrorEnabled: () ->
+    if (this.level.valueOf() <= log4js.Level.ERROR.valueOf())
+      return true;
+    return false;
+
+  # logging error messages
+  error: (message) ->
+    if (this.isErrorEnabled())
+      this.log(log4js.Level.ERROR, message, null);
+
+  # logging error messages
+  error: (message, throwable) ->
+    if (this.isErrorEnabled())
+      this.log(log4js.Level.ERROR, message, throwable);
+
+  # checks if Level Fatal is enabled
+  isFatalEnabled: () ->
+    if (this.level.valueOf() <= log4js.Level.FATAL.valueOf())
+      return true;
+    return false;
+
+  # logging fatal messages
+  fatal: (message) ->
+    if (this.isFatalEnabled())
+      this.log(log4js.Level.FATAL, message, null);
+
+  # logging fatal messages
+  fatal: (message, throwable) ->
+    if (this.isFatalEnabled())
+      this.log(log4js.Level.FATAL, message, throwable);
+
+  setDateFormatter: (formatFunction) ->
+    this.dateformatter = formatFunction;
+
+  getFormattedTimestamp: (date) ->
+    return this.dateformatter(date);
 };
 
 
 
 
-/**
- * Abstract base class for other appenders.
- * It is doing nothing.
- *
- * @constructor
- * @param {log4js.Logger} logger log4js instance this appender is attached to
- * @author Stephan Strittmatter
- */
-log4js.Appender = function () {
-    /**
-     * Reference to calling logger
-     * @type log4js.Logger
-     * @private
-     */
-     this.logger = null;
-};
+# Abstract base class for other appenders.
+# It is doing nothing.
+#
+# @constructor
+# @param {log4js.Logger} logger log4js instance this appender is attached to
+# @author Stephan Strittmatter
+log4js.Appender = () ->
+   # Reference to calling logger
+   # @type log4js.Logger
+   # @private
+   this.logger = null;
 
 log4js.Appender.prototype = {
-    /**
-     * appends the given loggingEvent appender specific
-     * @param {log4js.LoggingEvent} loggingEvent loggingEvent to append
-     */
-    doAppend: function(loggingEvent) {
-        return;
-    },
-    /**
-     * clears the Appender
-     */
-    doClear: function() {
-        return;
-    },
+  # appends the given loggingEvent appender specific
+  # @param {log4js.LoggingEvent} loggingEvent loggingEvent to append
+  doAppend: (loggingEvent) ->
+    return;
 
-    /**
-     * Set the Layout for this appender.
-     * @param {log4js.Layout} layout Layout for formatting loggingEvent
-     */
-    setLayout: function(layout){
-        this.layout = layout;
-    },
-    /**
-     * Set reference to the logger.
-     * @param {log4js.Logger} the invoking logger
-     */
-    setLogger: function(logger){
-        // add listener to the logger methods
-        logger.onlog.addListener(log4js.bind(this.doAppend, this));
-        logger.onclear.addListener(log4js.bind(this.doClear, this));
+  # clears the Appender
+  doClear: () ->
+    return;
 
-        this.logger = logger;
-    }
+  # Set the Layout for this appender.
+  # @param {log4js.Layout} layout Layout for formatting loggingEvent
+  setLayout: (layout) ->
+    this.layout = layout;
+
+  # Set reference to the logger.
+  # @param {log4js.Logger} the invoking logger
+  setLogger: (logger) ->
+    # add listener to the logger methods
+    logger.onlog.addListener(log4js.bind(this.doAppend, this));
+    logger.onclear.addListener(log4js.bind(this.doClear, this));
+
+    this.logger = logger;
 };
 
 
 
 
-/**
- * Interface for Layouts.
- * Use this Layout as "interface" for other Layouts. It is doing nothing.
- *
- * @constructor
- * @author Stephan Strittmatter
- */
-log4js.Layout = function(){};
+# Interface for Layouts.
+# Use this Layout as "interface" for other Layouts. It is doing nothing.
+#
+# @constructor
+# @author Stephan Strittmatter
+log4js.Layout = (()->);
 log4js.Layout.prototype = {
-    /**
-     * Implement this method to create your own layout format.
-     * @param {log4js.LoggingEvent} loggingEvent loggingEvent to format
-     * @return formatted String
-     * @type String
-     */
-    format: function(loggingEvent) {
-        return "";
-    },
-    /**
-     * Returns the content type output by this layout.
-     * @return The base class returns "text/plain".
-     * @type String
-     */
-    getContentType: function() {
-        return "text/plain";
-    },
-    /**
-     * @return Returns the header for the layout format. The base class returns null.
-     * @type String
-     */
-    getHeader: function() {
-        return null;
-    },
-    /**
-     * @return Returns the footer for the layout format. The base class returns null.
-     * @type String
-     */
-    getFooter: function() {
-        return null;
-    },
+  # Implement this method to create your own layout format.
+  # @param {log4js.LoggingEvent} loggingEvent loggingEvent to format
+  # @return formatted String
+  # @type String
+  format: (loggingEvent) ->
+    return "";
 
-    /**
-     * @return Separator between events
-     * @type String
-     */
-    getSeparator: function() {
-        return "";
-    }
+  # Returns the content type output by this layout.
+  # @return The base class returns "text/plain".
+  # @type String
+  getContentType: () ->
+    return "text/plain";
+
+  # @return Returns the header for the layout format. The base class returns null.
+  # @type String
+  getHeader: () ->
+    return null;
+
+  # @return Returns the footer for the layout format. The base class returns null.
+  # @type String
+  getFooter: () ->
+    return null;
+
+  # @return Separator between events
+  # @type String
+  getSeparator: () ->
+    return "";
 };
 
 
 
-/**
- * AJAX Appender sending {@link log4js.LoggingEvent}s asynchron via
- * <code>XMLHttpRequest</code> to server.<br />
- * The {@link log4js.LoggingEvent} is POSTed as response content and is
- * formatted by the accociated layout. Default layout is {@link log4js.XMLLayout}.
- * The <code>threshold</code> defines when the logs
- * should be send to the server. By default every event is sent on its
- * own (threshold=1). If it is set to 10, then the events are send in groups of
- * 10 events.
- *
- * @extends log4js.Appender
- * @constructor
- * @param {log4js.Logger} logger log4js instance this appender is attached to
- * @param {String} loggingUrl url where appender will post log messages to
- * @author Stephan Strittmatter
- */
-log4js.AjaxAppender = function(loggingUrl) {
-    /**
-     * is still sending data to server
-     * @type boolean
-     * @private
-     */
-    this.isInProgress = false;
-    this.threshold = 1;
+# AJAX Appender sending {@link log4js.LoggingEvent}s asynchron via
+# <code>XMLHttpRequest</code> to server.<br />
+# The {@link log4js.LoggingEvent} is POSTed as response content and is
+# formatted by the accociated layout. Default layout is {@link log4js.XMLLayout}.
+# The <code>threshold</code> defines when the logs
+# should be send to the server. By default every event is sent on its
+# own (threshold=1). If it is set to 10, then the events are send in groups of
+# 10 events.
+#
+# @extends log4js.Appender
+# @constructor
+# @param {log4js.Logger} logger log4js instance this appender is attached to
+# @param {String} loggingUrl url where appender will post log messages to
+# @author Stephan Strittmatter
+log4js.AjaxAppender = (loggingUrl) ->
+  # is still sending data to server
+  # @type boolean
+  # @private
+  this.isInProgress = false;
+  this.threshold = 1;
 
-    /**
-     * timeout when request is aborted.
-     * @private
-     */
-    this.timeout = 2000;
+  # timeout when request is aborted.
+  # @private
+  this.timeout = 2000;
 
-    this.loggingUrl = loggingUrl || "logging.log4js";
-    this.loggingEventBuffer = new log4js.FifoBuffer();
-    this.layout = new log4js.JSONLayout();
-    this.httpRequest = null;
-};
+  this.loggingUrl = loggingUrl || "logging.log4js";
+  this.loggingEventBuffer = new log4js.FifoBuffer();
+  this.layout = new log4js.JSONLayout();
+  this.httpRequest = null;
 
 log4js.AjaxAppender.prototype = log4js.extend(new log4js.Appender(), {
-    /**
-     * sends the logs to the server
-     * @param loggingEvent event to be logged
-     * @see log4js.Appender#doAppend
-     */
-    doAppend: function(loggingEvent) {
-        log4jsLogger.trace("> AjaxAppender.append");
+  # sends the logs to the server
+  # @param loggingEvent event to be logged
+  # @see log4js.Appender#doAppend
+  doAppend: (loggingEvent) ->
+    log4jsLogger.trace("> AjaxAppender.append");
 
-        if (this.loggingEventBuffer.length() <= this.threshold || this.isInProgress === true) {
-            this.loggingEventBuffer.push(loggingEvent);
-        }
+    if (this.loggingEventBuffer.length() <= this.threshold || this.isInProgress == true)
+      this.loggingEventBuffer.push(loggingEvent);
 
-        if(this.loggingEventBuffer.length() >= this.threshold && this.isInProgress === false) {
-            //if threshold is reached send the events and reset current threshold
-            this.send();
-        }
+    if(this.loggingEventBuffer.length() >= this.threshold && this.isInProgress == false)
+      # if threshold is reached send the events and reset current threshold
+      this.send();
 
-        log4jsLogger.trace("< AjaxAppender.append");
-    },
+    log4jsLogger.trace("< AjaxAppender.append");
 
-    /** @see Appender#doClear */
-    doClear: function() {
-        log4jsLogger.trace("> AjaxAppender.doClear" );
-        if(this.loggingEventBuffer.length() > 0) {
-            this.send();
-        }
-        log4jsLogger.trace("< AjaxAppender.doClear" );
-    },
+  # @see Appender#doClear
+  doClear: () ->
+    log4jsLogger.trace("> AjaxAppender.doClear" );
+    if (this.loggingEventBuffer.length() > 0)
+      this.send();
+    log4jsLogger.trace("< AjaxAppender.doClear" );
 
-    /**
-     * send the request.
-     */
-    send: function() {
-        if(this.loggingEventBuffer.length() >0) {
-            log4jsLogger.trace("> AjaxAppender.send");
+  # send the request.
+  send: () ->
+    if (this.loggingEventBuffer.length() > 0)
+      log4jsLogger.trace("> AjaxAppender.send");
 
-            this.isInProgress = true;
-            var a = [];
+      this.isInProgress = true;
+      var a = [];
 
-            for(var i = 0; i < this.loggingEventBuffer.length() && i < this.threshold; i++) {
-                a.push(this.layout.format(this.loggingEventBuffer.pull()));
-            }
+      for(var i = 0; i < this.loggingEventBuffer.length() && i < this.threshold; i++) {
+          a.push(this.layout.format(this.loggingEventBuffer.pull()));
+      }
 
-            var content = this.layout.getHeader();
-            content += a.join(this.layout.getSeparator());
-            content += this.layout.getFooter();
+      var content = this.layout.getHeader();
+      content += a.join(this.layout.getSeparator());
+      content += this.layout.getFooter();
 
-            var appender = this;
+      var appender = this;
 
-            if(this.httpRequest === null){
-                this.httpRequest = new XMLHttpRequest();
-                if (this.httpRequest.overrideMimeType && this.layout.getContentType) {
-                    this.httpRequest.overrideMimeType(this.layout.getContentType());
-                }
-            }
-            this.httpRequest.onreadystatechange = function() {
-                appender.onReadyStateChanged.call(appender);
-            };
+      if(this.httpRequest === null){
+          this.httpRequest = new XMLHttpRequest();
+          if (this.httpRequest.overrideMimeType && this.layout.getContentType) {
+              this.httpRequest.overrideMimeType(this.layout.getContentType());
+          }
+      }
+      this.httpRequest.onreadystatechange = function() {
+          appender.onReadyStateChanged.call(appender);
+      };
 
-            this.httpRequest.open("POST", this.loggingUrl, true);
+      this.httpRequest.open("POST", this.loggingUrl, true);
 
-            if (this.layout.getContentType)
-                this.httpRequest.setRequestHeader("Content-type", this.layout.getContentType());
+      if (this.layout.getContentType)
+          this.httpRequest.setRequestHeader("Content-type", this.layout.getContentType());
 
-            this.httpRequest.send(content);
+      this.httpRequest.send(content);
 
-            try {
-                window.setTimeout(function(){
-                    log4jsLogger.trace("> AjaxAppender.timeout");
-                    appender.httpRequest.onreadystatechange = function(){return;};
-                    appender.httpRequest.abort();
-                    appender.isInProgress = false;
+      try {
+          window.setTimeout(function(){
+              log4jsLogger.trace("> AjaxAppender.timeout");
+              appender.httpRequest.onreadystatechange = function(){return;};
+              appender.httpRequest.abort();
+              appender.isInProgress = false;
 
-                    if(appender.loggingEventBuffer.length() > 0) {
-                        appender.send();
-                    }
-                    log4jsLogger.trace("< AjaxAppender.timeout");
-                }, this.timeout);
-            } catch (e) {
-                log4jsLogger.fatal(e);
-            }
+              if(appender.loggingEventBuffer.length() > 0) {
+                  appender.send();
+              }
+              log4jsLogger.trace("< AjaxAppender.timeout");
+          }, this.timeout);
+      } catch (e) {
+          log4jsLogger.fatal(e);
+      }
 
-            log4jsLogger.trace("> AjaxAppender.send");
-        }
-    },
+      log4jsLogger.trace("> AjaxAppender.send");
 
-    /**
-     * @private
-     */
-    onReadyStateChanged: function() {
-        log4jsLogger.trace("> AjaxAppender.onReadyStateChanged");
-        var req = this.httpRequest;
+  # @private
+  onReadyStateChanged: () ->
+    log4jsLogger.trace("> AjaxAppender.onReadyStateChanged");
+    var req = this.httpRequest;
 
-        if (this.httpRequest.readyState != 4) {
-            log4jsLogger.trace("< AjaxAppender.onReadyStateChanged: readyState " + req.readyState + " != 4");
-            return;
-        }
+    if (this.httpRequest.readyState != 4) {
+        log4jsLogger.trace("< AjaxAppender.onReadyStateChanged: readyState " + req.readyState + " != 4");
+        return;
+    }
 
-        var success = ((typeof req.status === "undefined") || req.status === 0 ||
-            (req.status >= 200 && req.status < 300));
+    var success = ((typeof req.status === "undefined") || req.status === 0 ||
+        (req.status >= 200 && req.status < 300));
 
-        if (success) {
-            log4jsLogger.trace("  AjaxAppender.onReadyStateChanged: success");
+    if (success) {
+        log4jsLogger.trace("  AjaxAppender.onReadyStateChanged: success");
 
-            //ready sending data
-            this.isInProgress = false;
-        } else {
-            var msg = "  AjaxAppender.onReadyStateChanged: XMLHttpRequest request to URL " + this.loggingUrl + " returned status code " + this.httpRequest.status;
-            log4jsLogger.error(msg);
-        }
+        //ready sending data
+        this.isInProgress = false;
+    } else {
+        var msg = "  AjaxAppender.onReadyStateChanged: XMLHttpRequest request to URL " + this.loggingUrl + " returned status code " + this.httpRequest.status;
+        log4jsLogger.error(msg);
+    }
 
-        log4jsLogger.trace("< AjaxAppender.onReadyStateChanged: readyState == 4");
-    },
+    log4jsLogger.trace("< AjaxAppender.onReadyStateChanged: readyState == 4");
 
-    /**
-     * toString
-     */
-     toString: function() {
-        return "log4js.AjaxAppender[loggingUrl=" + this.loggingUrl + ", threshold=" + this.threshold + "]";
-     }
+   # toString
+   toString: () ->
+      return "log4js.AjaxAppender[loggingUrl=" + this.loggingUrl + ", threshold=" + this.threshold + "]";
 });
 
 
