@@ -47,7 +47,7 @@
  */
 
 
-var log4js = {
+window['log4js'] = {
   	version: "1.0-lw",
 	applicationStartDate: new Date(),
 	loggers: {},
